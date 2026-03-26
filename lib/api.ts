@@ -199,8 +199,8 @@ let refreshPromise: Promise<string | null> | null = null;
 const createAxiosInstance = (): AxiosInstance =>
   axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true,
     timeout: 20000,
+    withCredentials: false,
   });
 
 const apiClient = createAxiosInstance();

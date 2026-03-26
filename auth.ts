@@ -2,7 +2,7 @@ import type { JWT } from "next-auth/jwt";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { loginAdmin, refreshAccessToken } from "@/lib/api";
-import { API_BASE_URL } from "@/lib/constants";
+import { API_SERVER_BASE_URL } from "@/lib/constants";
 
 const getJwtExpiration = (token: string) => {
   try {
@@ -70,7 +70,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        if (!API_BASE_URL || API_BASE_URL === "/api/v1") {
+        if (!API_SERVER_BASE_URL || API_SERVER_BASE_URL === "/api/v1") {
           console.error("Missing API base URL. Set NEXTPUBLICBASEURL.");
           return null;
         }

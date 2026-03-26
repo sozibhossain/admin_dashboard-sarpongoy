@@ -1,13 +1,20 @@
-const rawEnvBaseUrl =
+const rawServerBaseUrl =
   process.env.NEXT_PUBLIC_BASE_URL ||
   process.env.NEXT_PUBLIC_BASEURL ||
+  process.env.NEXTPUBLICBASEURL ||
   "";
 
-const cleanBase = rawEnvBaseUrl.replace(/\/+$/, "");
+const cleanServerBase = rawServerBaseUrl.replace(/\/+$/, "");
 
-export const API_BASE_URL = cleanBase.endsWith("/api/v1")
-  ? cleanBase
-  : `${cleanBase}/api/v1`;
+export const API_SERVER_BASE_URL = cleanServerBase.endsWith("/api/v1")
+  ? cleanServerBase
+  : `${cleanServerBase}/api/v1`;
+
+// Browser requests should stay same-origin to avoid external CORS failures.
+export const API_CLIENT_BASE_URL = "/api/v1";
+
+export const API_BASE_URL =
+  typeof window === "undefined" ? API_SERVER_BASE_URL : API_CLIENT_BASE_URL;
 
 export const APP_NAME = "iLearnReady";
 
@@ -38,4 +45,3 @@ export const PROTECTED_PREFIXES = [
   "/schools",
   "/profile",
 ];
-
