@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f2f7e8;
+  --foreground: #1e1e1e;
+  --muted-foreground: #6c6c6c;
+  --sidebar-text: #079938;
+  --card: #ffffff;
+  --border: #d6ddcb;
+  --radius: 12px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --font-sans: var(--font-poppins);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins), sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 120%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #1c1c1c;
+  font-weight: 600;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: #202020;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.dashboard-card {
+  border-radius: 12px;
+  border: 1px solid #d9dfcf;
+  background: #ffffff;
+}
+
+.content-shell {
+  border-radius: 14px;
+  border: 1px solid #d9dfcf;
+  background: #ffffff;
+}
+
+.gradient-button {
+  background: linear-gradient(180deg, #00b023 0%, #077a1e 91.46%);
+}
+
+.muted-text {
+  color: #6c6c6c;
+}
