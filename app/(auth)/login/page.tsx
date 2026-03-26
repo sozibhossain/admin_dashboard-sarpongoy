@@ -74,7 +74,7 @@ function LoginPageContent() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="Email"
               required
-              className="h-16 border-[#a0a0a0] bg-transparent pl-12 text-[28px]"
+              className=" border-[#a0a0a0] bg-transparent pl-12 text-[20px]"
             />
           </div>
         </div>
@@ -88,7 +88,7 @@ function LoginPageContent() {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Password"
               required
-              className="h-16 border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[28px]"
+              className=" border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[20px]"
             />
           </div>
           <div className="flex justify-end">
@@ -104,7 +104,7 @@ function LoginPageContent() {
         <Button
           type="submit"
           disabled={loading}
-          className="mt-6 h-16 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[34px] font-semibold"
+          className="mt-6 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[16px] font-semibold"
         >
           {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Login"}
         </Button>

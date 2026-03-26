@@ -66,7 +66,7 @@ function ResetPasswordPageContent() {
               onChange={(event) => setNewPassword(event.target.value)}
               placeholder="New Password"
               required
-              className="h-16 border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[28px]"
+              className=" border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[20px]"
             />
           </div>
         </div>
@@ -79,14 +79,14 @@ function ResetPasswordPageContent() {
               onChange={(event) => setConfirmPassword(event.target.value)}
               placeholder="Confirm Password"
               required
-              className="h-16 border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[28px]"
+              className=" border-[#a0a0a0] bg-transparent pl-12 pr-12 text-[20px]"
             />
           </div>
         </div>
         <Button
           type="submit"
           disabled={mutation.isPending}
-          className="mt-4 h-16 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[34px] font-semibold"
+          className="mt-4 h-16 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[16px] font-semibold"
         >
           {mutation.isPending ? (
             <Loader2 className="h-6 w-6 animate-spin" />

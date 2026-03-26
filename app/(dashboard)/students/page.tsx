@@ -1,7 +1,8 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -50,6 +51,21 @@ import {
 } from "@/components/ui/table";
 
 const PAGE_SIZE = 10;
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+const FILE_MIME_TYPES = new Set([...IMAGE_MIME_TYPES, "application/pdf"]);
+
+const formatUploadSize = (bytes: number) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
 
 interface StudentFormState {
   schoolId: string;
@@ -84,6 +100,10 @@ export default function StudentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [formState, setFormState] = useState<StudentFormState>(initialForm);
+  const [picturePreviewUrl, setPicturePreviewUrl] = useState("");
+  const [filePreviewUrl, setFilePreviewUrl] = useState("");
+  const picturePreviewObjectUrlRef = useRef<string | null>(null);
+  const filePreviewObjectUrlRef = useRef<string | null>(null);
   const [filters, setFilters] = useState({
     userId: "",
     studentName: "",
@@ -100,6 +120,18 @@ export default function StudentsPage() {
     }, 350);
     return () => clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(
+    () => () => {
+      if (picturePreviewObjectUrlRef.current) {
+        URL.revokeObjectURL(picturePreviewObjectUrlRef.current);
+      }
+      if (filePreviewObjectUrlRef.current) {
+        URL.revokeObjectURL(filePreviewObjectUrlRef.current);
+      }
+    },
+    [],
+  );
 
   const schoolsQuery = useQuery({
     queryKey: ["schools", "student-form"],
@@ -138,7 +170,7 @@ export default function StudentsPage() {
     onSuccess: () => {
       toast.success("Student created successfully");
       setCreateOpen(false);
-      setFormState(initialForm);
+      resetCreateForm();
       void queryClient.invalidateQueries({ queryKey: ["students"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["schools"] });
@@ -165,6 +197,83 @@ export default function StudentsPage() {
   const selectedSchoolName = schools.find(
     (item) => item._id === formState.schoolId,
   )?.name;
+
+  const clearPicturePreview = () => {
+    if (picturePreviewObjectUrlRef.current) {
+      URL.revokeObjectURL(picturePreviewObjectUrlRef.current);
+      picturePreviewObjectUrlRef.current = null;
+    }
+    setPicturePreviewUrl("");
+  };
+
+  const clearFilePreview = () => {
+    if (filePreviewObjectUrlRef.current) {
+      URL.revokeObjectURL(filePreviewObjectUrlRef.current);
+      filePreviewObjectUrlRef.current = null;
+    }
+    setFilePreviewUrl("");
+  };
+
+  const resetCreateForm = () => {
+    setFormState(initialForm);
+    clearPicturePreview();
+    clearFilePreview();
+  };
+
+  const handleCreateDialogChange = (open: boolean) => {
+    setCreateOpen(open);
+    if (!open) {
+      resetCreateForm();
+    }
+  };
+
+  const handlePictureUpload = (file: File | null) => {
+    clearPicturePreview();
+    if (!file) {
+      setFormState((prev) => ({ ...prev, picture: null }));
+      return;
+    }
+
+    if (!IMAGE_MIME_TYPES.has(file.type)) {
+      toast.error("Picture must be JPG, PNG, or WEBP");
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      toast.error("Picture must be 10MB or smaller");
+      return;
+    }
+
+    setFormState((prev) => ({ ...prev, picture: file }));
+    const previewUrl = URL.createObjectURL(file);
+    picturePreviewObjectUrlRef.current = previewUrl;
+    setPicturePreviewUrl(previewUrl);
+  };
+
+  const handleFileUpload = (file: File | null) => {
+    clearFilePreview();
+    if (!file) {
+      setFormState((prev) => ({ ...prev, file: null }));
+      return;
+    }
+
+    if (!FILE_MIME_TYPES.has(file.type)) {
+      toast.error("File must be PDF, JPG, PNG, or WEBP");
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      toast.error("File must be 10MB or smaller");
+      return;
+    }
+
+    setFormState((prev) => ({ ...prev, file: file }));
+    if (file.type.startsWith("image/")) {
+      const previewUrl = URL.createObjectURL(file);
+      filePreviewObjectUrlRef.current = previewUrl;
+      setFilePreviewUrl(previewUrl);
+    }
+  };
 
   const handleCreateStudent = () => {
     if (!formState.schoolId) {
@@ -311,7 +420,7 @@ export default function StudentsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={handleCreateDialogChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-[24px]">Add New User</DialogTitle>
@@ -447,20 +556,40 @@ export default function StudentsPage() {
                 <input
                   type="file"
                   className="hidden"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(event) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      picture: event.target.files?.[0] || null,
-                    }))
-                  }
+                  accept=".jpg,.jpeg,.png,.webp"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0] || null;
+                    handlePictureUpload(selectedFile);
+                    if (!selectedFile) return;
+                    if (
+                      !IMAGE_MIME_TYPES.has(selectedFile.type) ||
+                      selectedFile.size > MAX_UPLOAD_SIZE_BYTES
+                    ) {
+                      event.target.value = "";
+                    }
+                  }}
                 />
-                <Upload className="mx-auto h-6 w-6 text-[#0ea43f]" />
+                {picturePreviewUrl ? (
+                  <div className="mx-auto h-14 w-14 overflow-hidden rounded-md border border-[#deead8]">
+                    <Image
+                      src={picturePreviewUrl}
+                      alt={formState.picture?.name || "Profile image preview"}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <Upload className="mx-auto h-6 w-6 text-[#0ea43f]" />
+                )}
                 <p className="mt-2 text-[16px] font-semibold text-[#2f2f2f]">
-                  upload
+                  {formState.picture?.name || "Upload picture"}
                 </p>
                 <p className="text-[14px] text-[#8b8b8b]">
-                  PDF, JPEG, PNG up to 10MB
+                  {formState.picture
+                    ? formatUploadSize(formState.picture.size)
+                    : "JPEG, PNG, WEBP up to 10MB"}
                 </p>
               </label>
 
@@ -468,27 +597,54 @@ export default function StudentsPage() {
                 <input
                   type="file"
                   className="hidden"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(event) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      file: event.target.files?.[0] || null,
-                    }))
-                  }
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0] || null;
+                    handleFileUpload(selectedFile);
+                    if (!selectedFile) return;
+                    if (
+                      !FILE_MIME_TYPES.has(selectedFile.type) ||
+                      selectedFile.size > MAX_UPLOAD_SIZE_BYTES
+                    ) {
+                      event.target.value = "";
+                    }
+                  }}
                 />
-                <Upload className="mx-auto h-6 w-6 text-[#0ea43f]" />
+                {filePreviewUrl ? (
+                  <div className="mx-auto h-14 w-14 overflow-hidden rounded-md border border-[#deead8]">
+                    <Image
+                      src={filePreviewUrl}
+                      alt={formState.file?.name || "File image preview"}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <Upload className="mx-auto h-6 w-6 text-[#0ea43f]" />
+                )}
                 <p className="mt-2 text-[16px] font-semibold text-[#2f2f2f]">
-                  upload
+                  {formState.file?.name || "Upload file"}
                 </p>
                 <p className="text-[14px] text-[#8b8b8b]">
-                  PDF, JPEG, PNG up to 10MB
+                  {formState.file
+                    ? `${formatUploadSize(formState.file.size)}${
+                        formState.file.type.startsWith("image/")
+                          ? " • Image"
+                          : " • PDF"
+                      }`
+                    : "PDF, JPEG, PNG up to 10MB"}
                 </p>
               </label>
             </div>
           </div>
 
           <DialogFooter className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-            <Button variant="secondary" onClick={() => setCreateOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => handleCreateDialogChange(false)}
+            >
               Cancel
             </Button>
             <Button

@@ -21,10 +21,10 @@ export function AuthShell({
           <Image
             src="/logo.png"
             alt="iLearnReady Logo"
-            width={296} // Set the actual width you want on screen
-            height={210} // Set the actual height you want on screen
+            width={1000} // Set the actual width you want on screen
+            height={1000} // Set the actual height you want on screen
             priority // Ensures the logo loads immediately without a blur effect
-            className="h-auto w-[296px] object-contain"
+            className="w-[180px] h-[120] object-contain"
           />
         </div>
         <div className="mb-8 text-center">

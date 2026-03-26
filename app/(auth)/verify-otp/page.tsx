@@ -107,7 +107,7 @@ function VerifyOtpPageContent() {
               value={digit}
               onChange={(event) => handleChange(index, event.target.value)}
               onKeyDown={(event) => handleKeyDown(index, event)}
-              className="h-16 w-16 rounded-lg border border-[#a0a0a0] bg-transparent text-center text-[36px] font-semibold text-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-[#355aa6]"
+              className="h-16 rounded-lg border border-[#a0a0a0] bg-transparent text-center text-[36px] font-semibold text-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-[#355aa6]"
             />
           ))}
         </div>
@@ -127,7 +127,7 @@ function VerifyOtpPageContent() {
         <Button
           type="submit"
           disabled={verifyMutation.isPending}
-          className="h-16 w-full rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[34px] font-semibold"
+          className="h-16 w-full rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[16px] font-semibold"
         >
           {verifyMutation.isPending ? (
             <Loader2 className="h-6 w-6 animate-spin" />

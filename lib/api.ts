@@ -130,6 +130,10 @@ export interface StudentDetailsData {
     schoolCode: string;
     gradeLevel: string;
     status: "active" | "inactive";
+    picture?: {
+      url?: string;
+      public_id?: string;
+    };
   };
   progressSheet: {
     summary: {
@@ -171,6 +175,10 @@ export interface TeacherDetailsData {
   schoolCode: string;
   gradeLevel: string;
   status: "active" | "inactive";
+  picture?: {
+    url?: string;
+    public_id?: string;
+  };
   courses: TeacherCourse[];
 }
 

@@ -50,14 +50,14 @@ export default function ForgotPasswordPage() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="Email"
               required
-              className="h-16 border-[#a0a0a0] bg-transparent pl-12 text-[28px]"
+              className=" border-[#a0a0a0] bg-transparent pl-12 text-[20px]"
             />
           </div>
         </div>
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-4 h-16 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[34px] font-semibold"
+          className="mt-4 rounded-[24px] bg-[linear-gradient(180deg,#0356c6_0%,#18079f_100%)] text-[16px] font-semibold"
         >
           {isPending ? (
             <Loader2 className="h-6 w-6 animate-spin" />
