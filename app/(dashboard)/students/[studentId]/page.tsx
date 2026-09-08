@@ -220,8 +220,8 @@ export default function StudentDetailsPage() {
   });
 
   const subjectTiles = useMemo(
-    () => buildSubjectTiles(studentQuery.data?.progressSheet.subjectProgress || []),
-    [studentQuery.data?.progressSheet.subjectProgress],
+    () => buildSubjectTiles(studentQuery.data?.progressSheet?.subjectProgress || []),
+    [studentQuery.data?.progressSheet?.subjectProgress],
   );
 
   const activeSubject = selectedSubject || subjectTiles[0]?.subject || "";
@@ -230,13 +230,13 @@ export default function StudentDetailsPage() {
   );
 
   const selectedRecentWork = useMemo(() => {
-    const recentWork = studentQuery.data?.progressSheet.recentWork || [];
+    const recentWork = studentQuery.data?.progressSheet?.recentWork || [];
     if (!activeSubject) return [];
 
     return recentWork.filter(
       (item) => normalizeText(item.subject || "") === normalizeText(activeSubject),
     );
-  }, [activeSubject, studentQuery.data?.progressSheet.recentWork]);
+  }, [activeSubject, studentQuery.data?.progressSheet?.recentWork]);
 
   const chartData = useMemo(() => {
     const summary = activeSubjectTile;
@@ -294,7 +294,7 @@ export default function StudentDetailsPage() {
 
   const lowestQuizScoreBySubject = useMemo(() => {
     const map = new Map<string, number>();
-    const rows = studentQuery.data?.progressSheet.lowestQuizScores || [];
+    const rows = studentQuery.data?.progressSheet?.lowestQuizScores || [];
 
     for (const row of rows) {
       if (row.score === null || row.score === undefined) continue;
@@ -306,7 +306,7 @@ export default function StudentDetailsPage() {
     }
 
     return map;
-  }, [studentQuery.data?.progressSheet.lowestQuizScores]);
+  }, [studentQuery.data?.progressSheet?.lowestQuizScores]);
 
   if (studentQuery.isLoading) return <LoadingState />;
 

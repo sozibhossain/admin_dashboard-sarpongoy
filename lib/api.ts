@@ -202,7 +202,7 @@ export interface StudentDetailsData {
       public_id?: string;
     };
   };
-  progressSheet: {
+  progressSheet?: {
     summary: {
       totalActivities: number;
       completedActivities: number;
