@@ -285,6 +285,7 @@ export interface TeacherDetailsData {
 export interface TeacherOverviewData {
   courses: TeacherCourse[];
   totalStudents: number;
+  timePeriod: string;
   monthlyTrend: Array<{
     month: string;
     completed: number;
@@ -671,11 +672,14 @@ export const fetchTeacherById = async (teacherId: string) => {
   return unwrap(response);
 };
 
-export const fetchTeacherOverview = async (teacherId: string, subject?: string) => {
+export const fetchTeacherOverview = async (
+  teacherId: string,
+  params?: { subject?: string; timePeriod?: string },
+) => {
   const response = await apiClient.get<ApiEnvelope<TeacherOverviewData>>(
     `/admin/teachers/${teacherId}/overview`,
     {
-      params: compactParams({ subject }),
+      params: compactParams(params),
     },
   );
   return unwrap(response);

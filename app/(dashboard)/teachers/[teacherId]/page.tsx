@@ -45,15 +45,25 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ALL_SUBJECTS = "ALL";
+const DEFAULT_TIME_PERIOD = "Past Year";
+const TIME_PERIODS = [
+  "Today",
+  "Past Week",
+  "Past 1 Month",
+  "Past 3 Months",
+  "Past 6 Months",
+  "Past Year",
+];
 
 type SubjectStyle = {
   label: string;
@@ -159,7 +169,8 @@ export default function TeacherDetailsPage() {
     confirmPassword: "",
   });
 
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState(ALL_SUBJECTS);
+  const [timePeriod, setTimePeriod] = useState(DEFAULT_TIME_PERIOD);
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
 
@@ -191,6 +202,7 @@ export default function TeacherDetailsPage() {
     onSuccess: () => {
       toast.success("Assigned courses updated");
       setCourseDialogOpen(false);
+      setSelectedSubject(ALL_SUBJECTS);
       void queryClient.invalidateQueries({ queryKey: ["teacher", teacherId] });
       void queryClient.invalidateQueries({
         queryKey: ["teacher-overview", teacherId],
@@ -204,12 +216,17 @@ export default function TeacherDetailsPage() {
     [teacherQuery.data?.courses],
   );
 
-  const activeSubject = selectedSubject || subjectTiles[0]?.subject || "";
+  const activeSubject = selectedSubject;
 
   const overviewQuery = useQuery({
-    queryKey: ["teacher-overview", teacherId, activeSubject],
-    queryFn: () => fetchTeacherOverview(teacherId, activeSubject),
-    enabled: !!teacherId && subjectTiles.length > 0,
+    queryKey: ["teacher-overview", teacherId, activeSubject, timePeriod],
+    queryFn: () =>
+      fetchTeacherOverview(teacherId, {
+        subject: activeSubject,
+        timePeriod,
+      }),
+    enabled: !!teacherId && teacherQuery.isSuccess,
+    placeholderData: (previousData) => previousData,
   });
 
   const chartData = useMemo(
@@ -220,14 +237,6 @@ export default function TeacherDetailsPage() {
       })),
     [overviewQuery.data],
   );
-
-  const performanceByCourse = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of overviewQuery.data?.performanceRange || []) {
-      map.set(normalizeText(item.subject), item.completionRate);
-    }
-    return map;
-  }, [overviewQuery.data]);
 
   if (teacherQuery.isLoading) return <LoadingState />;
 
@@ -516,18 +525,43 @@ export default function TeacherDetailsPage() {
             <h2 className="text-[24px] font-semibold leading-none">
               Subject completion Overview
             </h2>
-            <select
-              className="rounded-md bg-[linear-gradient(180deg,#00B023_0%,#077A1E_91.46%)] px-3 py-1 text-sm text-white outline-none"
-              value={activeSubject}
-              onChange={(event) => setSelectedSubject(event.target.value)}
-              disabled={subjectTiles.length === 0}
-            >
-              {subjectTiles.map((subject) => (
-                <option key={subject.subject} value={subject.subject}>
-                  {subject.subject}
-                </option>
-              ))}
-            </select>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Select value={timePeriod} onValueChange={setTimePeriod}>
+                <SelectTrigger className="h-11 w-full rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-4 text-sm font-medium text-white shadow-sm transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[160px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent
+                  className="border-[#b9d7b5]"
+                  viewportClassName="h-auto max-h-72"
+                >
+                  {TIME_PERIODS.map((period) => (
+                    <SelectItem key={period} value={period}>
+                      {period}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={activeSubject}
+                onValueChange={setSelectedSubject}
+              >
+                <SelectTrigger className="h-11 w-full rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-4 text-sm font-medium text-white shadow-sm transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[260px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
+                  <SelectValue placeholder="Select a subject" />
+                </SelectTrigger>
+                <SelectContent
+                  className="border-[#b9d7b5]"
+                  viewportClassName="h-auto max-h-72"
+                >
+                  <SelectItem value={ALL_SUBJECTS}>All Subjects</SelectItem>
+                  {subjectTiles.map((subject) => (
+                    <SelectItem key={subject.subject} value={subject.subject}>
+                      {subject.subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="h-[380px] rounded-xl border border-[#dce8d5] bg-[#f4fdf2] p-3">
@@ -561,108 +595,15 @@ export default function TeacherDetailsPage() {
               className="font-semibold"
               style={{ color: activeSubjectStyle?.text }}
             >
-              {activeSubject || "—"}
+              {activeSubject === ALL_SUBJECTS ? "All Subjects" : activeSubject}
             </span>
+            {overviewQuery.isFetching && (
+              <Loader2 className="ml-2 inline h-4 w-4 animate-spin text-[#0b9f2f]" />
+            )}
           </p>
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="content-shell">
-          <CardContent className="p-5">
-            <h3 className="text-[24px] font-semibold">Performance Range</h3>
-            <div className="mt-4 space-y-4">
-              {subjectTiles.map((subject) => {
-                const completionRate =
-                  performanceByCourse.get(normalizeText(subject.subject)) || 0;
-                return (
-                  <div key={subject.subject}>
-                    <div className="mb-1 flex items-center justify-between text-[13px]">
-                      <span>{subject.subject}</span>
-                      <span className="font-semibold">{completionRate}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-[#edf2e7]">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{
-                          width: `${completionRate}%`,
-                          backgroundColor: subject.border,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              {subjectTiles.length === 0 && (
-                <p className="text-[13px] text-[#8f8f8f]">
-                  No subjects assigned yet.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="content-shell">
-          <CardContent className="p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-[24px] font-semibold leading-none">Recent Work</h3>
-              <select className="rounded-md border border-[#d7ddce] bg-white px-2 py-1 text-sm text-[#555] outline-none">
-                <option>Today</option>
-                <option>Weekly</option>
-                <option>Monthly</option>
-              </select>
-            </div>
-            <p className="mb-3 text-[13px] text-[#8f8f8f]">
-              Recent lesson activity and completion summary
-            </p>
-            <div className="rounded-lg border border-[#e8ece0]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Practice</TableHead>
-                    <TableHead>Quiz</TableHead>
-                    <TableHead>Lowest Quiz Score</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjectTiles.map((subject) => {
-                    const work = overviewQuery.data?.recentWork.find(
-                      (item) => normalizeText(item.subject) === normalizeText(subject.subject),
-                    );
-                    const practice = work
-                      ? `${work.practiceCompleted}/${work.practiceTotal}`
-                      : "—";
-                    const quiz = work
-                      ? `${work.quizCompleted}/${work.quizTotal}`
-                      : "—";
-                    const lowest =
-                      work?.lowestQuizScore != null ? `${work.lowestQuizScore}%` : "—";
-
-                    return (
-                      <TableRow key={subject.subject}>
-                        <TableCell style={{ color: subject.text }}>
-                          {subject.subject}
-                        </TableCell>
-                        <TableCell>{practice}</TableCell>
-                        <TableCell>{quiz}</TableCell>
-                        <TableCell>{lowest}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {subjectTiles.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-[#8f8f8f]">
-                        No subjects assigned yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
@@ -672,10 +613,6 @@ function LoadingState() {
     <div className="space-y-4">
       <Skeleton className="h-72 rounded-xl" />
       <Skeleton className="h-96 rounded-xl" />
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Skeleton className="h-72 rounded-xl" />
-        <Skeleton className="h-72 rounded-xl" />
-      </div>
     </div>
   );
 }
