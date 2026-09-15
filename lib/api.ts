@@ -202,38 +202,67 @@ export interface StudentDetailsData {
       public_id?: string;
     };
   };
-  progressSheet?: {
+  filters: {
+    gradeLevel: string;
+    timePeriod: string;
+    subject: string;
+    gradeLevels: string[];
+    timePeriods: string[];
+    subjects: string[];
+  };
+  overview: {
     summary: {
-      totalActivities: number;
-      completedActivities: number;
+      activityCount: number;
       totalHours: number;
+      avgDailyHours: number;
       avgQuizScore: number;
-      completionRate: number;
     };
     subjectProgress: Array<{
       subject: string;
-      totalActivities: number;
-      completedActivities: number;
-      totalHours: number;
+      completionRate: number;
+    }>;
+    courseWiseOverview: Array<{
+      courseId: string;
+      subject: string;
+      avgDailyHours: number;
       avgQuizScore: number;
       completionRate: number;
     }>;
-    recentWork: Array<{
-      _id: string;
-      subject: string;
-      lessonTitle: string;
-      strand: string;
-      subStrand: string;
+    monthlyActivity: {
+      months: Array<{
+        label: string;
+        key: string;
+        avgDailyHours: number;
+        avgQuizScore: number;
+      }>;
+      totals: {
+        avgDailyHours: number;
+        avgQuizScore: number;
+      };
+    };
+    activityBreakdown: Array<{
       activityType: string;
-      status: string;
-      score: number | null;
-      updatedAt: string;
+      total: number;
+      completed: number;
     }>;
-    lowestQuizScores: Array<{
-      _id: string;
+    recentWork: Array<{
       subject: string;
+      date: string;
+      activityType: string;
       score: number | null;
-      updatedAt: string;
+      practiceScore: number | null;
+      quizScore: number | null;
+      lesson: {
+        strand?: string;
+        subStrand?: string;
+        lessonNumber?: string;
+        title?: string;
+      };
+    }>;
+    quizScoreTable: Array<{
+      subject: string;
+      avgFirstAttempt: number;
+      avgLatestAttempt: number;
     }>;
   };
 }
@@ -538,9 +567,17 @@ export const fetchStudentsExport = async (params: {
   return unwrap(response);
 };
 
-export const fetchStudentById = async (studentId: string) => {
+export const fetchStudentById = async (
+  studentId: string,
+  params?: {
+    gradeLevel?: string;
+    subject?: string;
+    timePeriod?: string;
+  },
+) => {
   const response = await apiClient.get<ApiEnvelope<StudentDetailsData>>(
     `/admin/students/${studentId}`,
+    { params: compactParams(params) },
   );
   return unwrap(response);
 };
