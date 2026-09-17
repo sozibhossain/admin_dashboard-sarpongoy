@@ -47,18 +47,27 @@ export interface LoginData {
   user: AuthUser;
 }
 
+export interface DashboardCounters {
+  totalStudents: number;
+  activeStudents: number;
+  inactiveStudents: number;
+  totalTeachers: number;
+  activeTeachers: number;
+  inactiveTeachers: number;
+  totalSubjects: number;
+  totalActivityHours?: number;
+  totalQuizCompleted?: number;
+}
+
 export interface DashboardData {
-  counters: {
-    totalStudents: number;
-    activeStudents: number;
-    inactiveStudents: number;
-    totalTeachers: number;
-    activeTeachers: number;
-    inactiveTeachers: number;
-    totalSubjects: number;
-  };
+  counters: DashboardCounters;
+  counts?: DashboardCounters;
   charts: {
     subjectDistribution: Array<{
+      subject: string;
+      completed: number;
+    }>;
+    overallSubjectDistribution?: Array<{
       subject: string;
       completed: number;
     }>;
@@ -531,9 +540,18 @@ export const refreshAccessToken = async (payload: { refreshToken: string }) => {
   return response.data;
 };
 
-export const fetchDashboard = async () => {
+export const fetchDashboard = async (params?: {
+  schoolId?: string;
+  gradeLevel?: string;
+  [key: string]: unknown;
+}) => {
+  const safeParams =
+    params && typeof params === "object" && !("queryKey" in params)
+      ? { schoolId: params.schoolId, gradeLevel: params.gradeLevel }
+      : undefined;
   const response = await apiClient.get<ApiEnvelope<DashboardData>>(
     "/admin/dashboard",
+    { params: compactParams(safeParams) },
   );
   return unwrap(response);
 };
@@ -674,7 +692,7 @@ export const fetchTeacherById = async (teacherId: string) => {
 
 export const fetchTeacherOverview = async (
   teacherId: string,
-  params?: { subject?: string; timePeriod?: string },
+  params?: { subject?: string; timePeriod?: string; year?: string | number },
 ) => {
   const response = await apiClient.get<ApiEnvelope<TeacherOverviewData>>(
     `/admin/teachers/${teacherId}/overview`,

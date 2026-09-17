@@ -1,4 +1,5 @@
 "use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -8,19 +9,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import {
+  BarChart2,
   Calculator,
   FlaskConical,
   HandHelping,
   KeyRound,
   Landmark,
   Languages,
+  AreaChart as AreaChartIcon,
   Loader2,
   Pencil,
   type LucideIcon,
@@ -55,14 +61,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ALL_SUBJECTS = "ALL";
-const DEFAULT_TIME_PERIOD = "Past Year";
-const TIME_PERIODS = [
-  "Today",
-  "Past Week",
-  "Past 1 Month",
-  "Past 3 Months",
-  "Past 6 Months",
-  "Past Year",
+const CURRENT_YEAR = new Date().getFullYear().toString();
+const YEAR_OPTIONS = [
+  CURRENT_YEAR,
+  (Number(CURRENT_YEAR) - 1).toString(),
+  (Number(CURRENT_YEAR) - 2).toString(),
 ];
 
 type SubjectStyle = {
@@ -170,7 +173,8 @@ export default function TeacherDetailsPage() {
   });
 
   const [selectedSubject, setSelectedSubject] = useState(ALL_SUBJECTS);
-  const [timePeriod, setTimePeriod] = useState(DEFAULT_TIME_PERIOD);
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [chartType, setChartType] = useState<"bar" | "area">("bar");
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
 
@@ -219,11 +223,12 @@ export default function TeacherDetailsPage() {
   const activeSubject = selectedSubject;
 
   const overviewQuery = useQuery({
-    queryKey: ["teacher-overview", teacherId, activeSubject, timePeriod],
+    queryKey: ["teacher-overview", teacherId, activeSubject, selectedYear],
     queryFn: () =>
       fetchTeacherOverview(teacherId, {
         subject: activeSubject,
-        timePeriod,
+        year: selectedYear,
+        timePeriod: selectedYear,
       }),
     enabled: !!teacherId && teacherQuery.isSuccess,
     placeholderData: (previousData) => previousData,
@@ -234,8 +239,30 @@ export default function TeacherDetailsPage() {
       (overviewQuery.data?.monthlyTrend || []).map((item) => ({
         month: item.month,
         value: item.completed,
+        avgQuizScore: item.avgQuizScore || 0,
       })),
     [overviewQuery.data],
+  );
+
+  const totalCompletedYear = useMemo(
+    () => chartData.reduce((acc, curr) => acc + (curr.value || 0), 0),
+    [chartData],
+  );
+
+  const peakMonth = useMemo(() => {
+    if (!chartData.length) return null;
+    let max = chartData[0];
+    for (const item of chartData) {
+      if ((item.value || 0) > (max.value || 0)) {
+        max = item;
+      }
+    }
+    return (max.value || 0) > 0 ? max : null;
+  }, [chartData]);
+
+  const activeMonthsCount = useMemo(
+    () => chartData.filter((item) => (item.value || 0) > 0).length,
+    [chartData],
   );
 
   if (teacherQuery.isLoading) return <LoadingState />;
@@ -521,32 +548,69 @@ export default function TeacherDetailsPage() {
 
       <Card className="content-shell">
         <CardContent className="p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-[24px] font-semibold leading-none">
-              Subject completion Overview
-            </h2>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <Select value={timePeriod} onValueChange={setTimePeriod}>
-                <SelectTrigger className="h-11 w-full rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-4 text-sm font-medium text-white shadow-sm transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[160px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
+          {/* Header */}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-[22px] font-bold text-[#1a1a1a]">
+                Subject completion Overview
+              </h2>
+              <p className="mt-1 text-sm text-[#7a7a7a]">
+                Monthly completion analytics from Jan to Dec ({selectedYear})
+              </p>
+            </div>
+
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+              {/* Chart Mode Switcher: Bar vs Area */}
+              <div className="inline-flex rounded-lg border border-[#d9e3d4] bg-[#f7faf5] p-1 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setChartType("bar")}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                    chartType === "bar"
+                      ? "bg-white text-[#15803d] shadow-xs ring-1 ring-black/5"
+                      : "text-[#6b7280] hover:text-[#1a1a1a]"
+                  }`}
+                >
+                  <BarChart2 className="h-3.5 w-3.5" />
+                  Bar Chart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartType("area")}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                    chartType === "area"
+                      ? "bg-white text-[#15803d] shadow-xs ring-1 ring-black/5"
+                      : "text-[#6b7280] hover:text-[#1a1a1a]"
+                  }`}
+                >
+                  <AreaChartIcon className="h-3.5 w-3.5" />
+                  Area Chart
+                </button>
+              </div>
+
+              {/* Year Selector */}
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-10 rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-3 text-sm font-medium text-white shadow-xs transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[120px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent
                   className="border-[#b9d7b5]"
                   viewportClassName="h-auto max-h-72"
                 >
-                  {TIME_PERIODS.map((period) => (
-                    <SelectItem key={period} value={period}>
-                      {period}
+                  {YEAR_OPTIONS.map((year) => (
+                    <SelectItem key={year} value={year}>
+                      {year}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
+              {/* Subject Selector */}
               <Select
                 value={activeSubject}
                 onValueChange={setSelectedSubject}
               >
-                <SelectTrigger className="h-11 w-full rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-4 text-sm font-medium text-white shadow-sm transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[260px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
+                <SelectTrigger className="h-10 rounded-lg border-0 bg-[linear-gradient(180deg,#00B023_0%,#078522_100%)] px-4 text-sm font-medium text-white shadow-xs transition-shadow hover:shadow-md focus:ring-2 focus:ring-[#72d486] focus:ring-offset-2 sm:w-[220px] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-white">
                   <SelectValue placeholder="Select a subject" />
                 </SelectTrigger>
                 <SelectContent
@@ -564,46 +628,244 @@ export default function TeacherDetailsPage() {
             </div>
           </div>
 
-          <div className="h-[380px] rounded-xl border border-[#dce8d5] bg-[#f4fdf2] p-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="teacherOverview" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#39b54a" stopOpacity={0.75} />
-                    <stop offset="100%" stopColor="#39b54a" stopOpacity={0.15} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="4 4" stroke="#cfe1c8" />
-                <XAxis dataKey="month" tickLine={false} />
-                <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  name="Activities completed"
-                  stroke="#0b9f2f"
-                  strokeWidth={3}
-                  fill="url(#teacherOverview)"
-                />
-              </AreaChart>
+          {/* Quick Metrics Strip */}
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-[#e4ece0] bg-white p-3 shadow-xs">
+              <span className="text-xs text-[#71717a]">Total Completed ({selectedYear})</span>
+              <p className="text-lg font-bold text-[#1a1a1a]">
+                {totalCompletedYear.toLocaleString("en-US")}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#e4ece0] bg-white p-3 shadow-xs">
+              <span className="text-xs text-[#71717a]">Peak Month</span>
+              <p className="text-lg font-bold text-[#15803d]">
+                {peakMonth ? `${peakMonth.month} (${peakMonth.value.toLocaleString("en-US")})` : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#e4ece0] bg-white p-3 shadow-xs">
+              <span className="text-xs text-[#71717a]">Active Months</span>
+              <p className="text-lg font-bold text-[#1a1a1a]">
+                {activeMonthsCount} / 12
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#e4ece0] bg-white p-3 shadow-xs">
+              <span className="text-xs text-[#71717a]">Filtered Subject</span>
+              <p className="truncate text-lg font-bold" style={{ color: activeSubjectStyle?.text || "#15803d" }}>
+                {activeSubject === ALL_SUBJECTS ? "All Subjects" : activeSubject}
+              </p>
+            </div>
+          </div>
+
+          {/* Chart Container */}
+          <div className="h-[340px] rounded-xl border border-[#dce8d5] bg-[#f9fdf8] p-3">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              {chartType === "bar" ? (
+                <BarChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="teacherBarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#16a34a" />
+                      <stop offset="100%" stopColor="#22c55e" />
+                    </linearGradient>
+                    <linearGradient id="teacherBarPeakGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0d9488" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2ece0" />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={{ stroke: "#dce8d5" }}
+                    tick={{ fill: "#52525b", fontSize: 12, fontWeight: 500 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#71717a", fontSize: 12 }}
+                    allowDecimals={false}
+                    tickFormatter={(val) => Number(val).toLocaleString("en-US")}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(34, 197, 94, 0.08)", radius: 6 }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const item = payload[0].payload;
+                        return (
+                          <div className="rounded-xl border border-[#bbf7d0] bg-white p-3 shadow-lg">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#15803d]">
+                              {item.month} {selectedYear}
+                            </p>
+                            <p className="mt-1 text-base font-bold text-[#1a1a1a]">
+                              {item.value.toLocaleString("en-US")}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                completed
+                              </span>
+                            </p>
+                            {item.avgQuizScore > 0 && (
+                              <p className="mt-0.5 text-xs text-[#71717a]">
+                                Avg Quiz Score: {item.avgQuizScore}%
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    name="Activities completed"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={36}
+                  >
+                    {chartData.map((entry) => {
+                      const isPeak = peakMonth && peakMonth.month === entry.month && entry.value > 0;
+                      return (
+                        <Cell
+                          key={entry.month}
+                          fill={isPeak ? "url(#teacherBarPeakGrad)" : "url(#teacherBarGrad)"}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              ) : (
+                <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="teacherAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.6} />
+                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2ece0" />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={{ stroke: "#dce8d5" }}
+                    tick={{ fill: "#52525b", fontSize: 12, fontWeight: 500 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#71717a", fontSize: 12 }}
+                    allowDecimals={false}
+                    tickFormatter={(val) => Number(val).toLocaleString("en-US")}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const item = payload[0].payload;
+                        return (
+                          <div className="rounded-xl border border-[#bbf7d0] bg-white p-3 shadow-lg">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#15803d]">
+                              {item.month} {selectedYear}
+                            </p>
+                            <p className="mt-1 text-base font-bold text-[#1a1a1a]">
+                              {item.value.toLocaleString("en-US")}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                completed
+                              </span>
+                            </p>
+                            {item.avgQuizScore > 0 && (
+                              <p className="mt-0.5 text-xs text-[#71717a]">
+                                Avg Quiz Score: {item.avgQuizScore}%
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    name="Activities completed"
+                    stroke="#16a34a"
+                    strokeWidth={3}
+                    fill="url(#teacherAreaGrad)"
+                  />
+                </AreaChart>
+              )}
             </ResponsiveContainer>
           </div>
 
-          <p className="mt-3 text-sm text-[#6f6f6f]">
-            Active Subject:{" "}
-            <span
-              className="font-semibold"
-              style={{ color: activeSubjectStyle?.text }}
-            >
-              {activeSubject === ALL_SUBJECTS ? "All Subjects" : activeSubject}
-            </span>
+          {/* Monthly Breakdown Grid (Jan to Dec per month data display) */}
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#52525b]">
+                Monthly Breakdown (Jan – Dec {selectedYear})
+              </span>
+              <span className="text-xs text-[#71717a]">
+                {activeMonthsCount > 0
+                  ? `${activeMonthsCount} of 12 months with activity`
+                  : "No completions recorded in this period"}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-12">
+              {chartData.map((item) => {
+                const hasData = (item.value || 0) > 0;
+                const isPeak = peakMonth && peakMonth.month === item.month && hasData;
+                return (
+                  <div
+                    key={item.month}
+                    className={`relative flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all ${
+                      isPeak
+                        ? "border-[#16a34a] bg-[#eaf8ea] shadow-xs ring-1 ring-[#16a34a]"
+                        : hasData
+                        ? "border-[#bbf7d0] bg-[#f0fdf4] hover:border-[#86efac]"
+                        : "border-[#e9ece6] bg-[#fafbfa]"
+                    }`}
+                  >
+                    <span
+                      className={`text-[12px] font-semibold ${
+                        hasData ? "text-[#166534]" : "text-[#71717a]"
+                      }`}
+                    >
+                      {item.month}
+                    </span>
+                    <span
+                      className={`mt-0.5 text-[14px] font-bold ${
+                        isPeak
+                          ? "text-[#15803d]"
+                          : hasData
+                          ? "text-[#16a34a]"
+                          : "text-[#a1a1aa]"
+                      }`}
+                    >
+                      {item.value.toLocaleString("en-US")}
+                    </span>
+                    {isPeak && (
+                      <span className="mt-0.5 rounded-full bg-[#16a34a] px-1 py-[1px] text-[8px] font-bold uppercase tracking-wider text-white">
+                        Peak
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer note */}
+          <div className="mt-3 flex items-center justify-between text-sm text-[#6f6f6f]">
+            <p>
+              Active Subject:{" "}
+              <span
+                className="font-semibold"
+                style={{ color: activeSubjectStyle?.text }}
+              >
+                {activeSubject === ALL_SUBJECTS ? "All Subjects" : activeSubject}
+              </span>
+            </p>
             {overviewQuery.isFetching && (
-              <Loader2 className="ml-2 inline h-4 w-4 animate-spin text-[#0b9f2f]" />
+              <span className="inline-flex items-center gap-1.5 text-xs text-[#0b9f2f]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Updating...
+              </span>
             )}
-          </p>
+          </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }

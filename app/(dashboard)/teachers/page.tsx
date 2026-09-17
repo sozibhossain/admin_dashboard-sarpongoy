@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -499,18 +499,15 @@ export default function TeachersPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Total Teachers"
-          value={`${counters?.totalTeachers || 0}`}
-          trend="+ 36%"
+          value={`${(counters?.totalTeachers || 0).toLocaleString("en-US")}`}
         />
         <StatCard
           label="Active Teachers"
-          value={`${counters?.activeTeachers || 0}`}
-          trend="+ 57%"
+          value={`${(counters?.activeTeachers || 0).toLocaleString("en-US")}`}
         />
         <StatCard
           label="Inactive Teachers"
-          value={`${counters?.inactiveTeachers || 0}`}
-          trend="+ 83%"
+          value={`${(counters?.inactiveTeachers || 0).toLocaleString("en-US")}`}
         />
       </div>
 
