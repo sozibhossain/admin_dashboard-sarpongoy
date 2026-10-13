@@ -83,6 +83,7 @@ export interface DashboardData {
 }
 
 export interface StudentListItem {
+  createdAt?: string;
   _id: string;
   studentName: string;
   userId: string;
@@ -98,6 +99,7 @@ export interface TeacherCourse {
 }
 
 export interface TeacherListItem {
+  createdAt?: string;
   _id: string;
   teacherName: string;
   userId: string;
@@ -337,7 +339,13 @@ let authBridge: AuthBridge = {
   onUnauthorized: () => undefined,
 };
 
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<string> | null = null;
+let refreshedCredentials: { refreshToken: string; accessToken: string } | null = null;
+
+const getCurrentAccessToken = () =>
+  refreshedCredentials && refreshedCredentials.refreshToken === authBridge.getRefreshToken()
+    ? refreshedCredentials.accessToken
+    : authBridge.getAccessToken();
 
 const createAxiosInstance = (): AxiosInstance =>
   axios.create({
@@ -394,28 +402,32 @@ const createBulkRecords = async <TPayload, TResult>(
   return { created, failed };
 };
 
-const requestAccessTokenRefresh = async (): Promise<string | null> => {
+const requestAccessTokenRefresh = async (): Promise<string> => {
   const refreshToken = authBridge.getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) throw new Error("Session is not ready to refresh");
 
-  try {
-    const response = await publicClient.post<
-      ApiEnvelope<{ accessToken: string }>
-    >("/auth/refresh-token", {
-      refreshToken,
-    });
-    const accessToken = response.data.data?.accessToken;
-    if (!accessToken) return null;
-    await authBridge.onAccessToken(accessToken);
-    return accessToken;
-  } catch {
-    return null;
+  const response = await publicClient.post<
+    ApiEnvelope<{ accessToken: string }>
+  >("/auth/refresh-token", {
+    refreshToken,
+  });
+  const accessToken = response.data.data?.accessToken;
+  if (!response.data.success || !accessToken) {
+    throw new Error("Unable to refresh access token");
   }
+  // Keep the fresh token available while React persists the session update.
+  refreshedCredentials = { refreshToken, accessToken };
+  try {
+    await authBridge.onAccessToken(accessToken);
+  } catch {
+    // A session update outage does not invalidate the backend access token.
+  }
+  return accessToken;
 };
 
-apiClient.interceptors.request.use((config) => {
-  const token = authBridge.getAccessToken();
-  if (token) {
+apiClient.interceptors.request.use((config: RetryConfig) => {
+  const token = getCurrentAccessToken();
+  if (token && !config.__isRetryRequest) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -432,6 +444,11 @@ apiClient.interceptors.response.use(
     }
 
     originalRequest.__isRetryRequest = true;
+    const currentToken = getCurrentAccessToken();
+    if (currentToken && originalRequest.headers.Authorization !== `Bearer ${currentToken}`) {
+      originalRequest.headers.Authorization = `Bearer ${currentToken}`;
+      return apiClient(originalRequest);
+    }
 
     if (!refreshPromise) {
       refreshPromise = requestAccessTokenRefresh().finally(() => {
@@ -439,14 +456,18 @@ apiClient.interceptors.response.use(
       });
     }
 
-    const nextToken = await refreshPromise;
-    if (!nextToken) {
-      authBridge.onUnauthorized();
-      return Promise.reject(error);
+    try {
+      const nextToken = await refreshPromise;
+      originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      // Network errors and server outages should leave the session intact.
+      if (axios.isAxiosError(refreshError) &&
+          [401, 403].includes(refreshError.response?.status || 0)) {
+        authBridge.onUnauthorized();
+      }
+      return Promise.reject(refreshError);
     }
-
-    originalRequest.headers.Authorization = `Bearer ${nextToken}`;
-    return apiClient(originalRequest);
   },
 );
 

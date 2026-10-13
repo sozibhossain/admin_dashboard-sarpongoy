@@ -31,6 +31,7 @@ import {
 } from "@/components/management/export-records-dialog";
 import { ManagementToolbar } from "@/components/management/management-toolbar";
 import { SectionHeader } from "@/components/management/section-header";
+import { CreatedDate } from "@/components/management/created-date";
 import { TableSkeleton } from "@/components/management/table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -559,7 +560,7 @@ export default function TeachersPage() {
           />
 
           {teachersQuery.isLoading ? (
-            <TableSkeleton columns={8} />
+            <TableSkeleton columns={9} />
           ) : teachersQuery.isError ? (
             <div className="rounded-lg border border-[#ffd3d3] bg-[#fff6f6] p-4 text-[#d73636]">
               {getApiErrorMessage(
@@ -593,6 +594,7 @@ export default function TeachersPage() {
                     <TableHead>Grade Level</TableHead>
                     <TableHead>Password</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created Date</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -632,6 +634,9 @@ export default function TeachersPage() {
                         >
                           {item.status === "active" ? "Active" : "Inactive"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <CreatedDate value={item.createdAt} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">

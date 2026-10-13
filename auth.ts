@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { JWT } from "next-auth/jwt";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -42,10 +43,12 @@ const refreshSessionToken = async (token: JWT): Promise<JWT> => {
       accessTokenExpires: getJwtExpiration(accessToken),
       error: undefined,
     };
-  } catch {
+  } catch (error) {
     return {
       ...token,
-      error: "RefreshAccessTokenError",
+      error: axios.isAxiosError(error) && [401, 403].includes(error.response?.status || 0)
+        ? "RefreshAccessTokenError"
+        : "RefreshAccessTokenTemporaryError",
     };
   }
 };
@@ -106,6 +109,7 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && session?.accessToken) {
         token.accessToken = session.accessToken;
         token.accessTokenExpires = getJwtExpiration(session.accessToken);
+        token.error = undefined;
       }
 
       if (user) {

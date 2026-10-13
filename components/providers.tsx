@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { Toaster } from "sonner";
 import { ErrorFeedbackProvider } from "@/components/management/error-feedback";
 import { configureApiAuthBridge } from "@/lib/api";
 
-function ApiSessionBridge() {
-  const { data: session, update } = useSession();
+function ApiSessionBridge({ children }: { children: React.ReactNode }) {
+  const { data: session, status, update } = useSession();
+  const signingOut = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    signingOut.current = false;
     configureApiAuthBridge({
       getAccessToken: () => session?.accessToken,
       getRefreshToken: () => session?.refreshToken,
@@ -18,12 +20,15 @@ function ApiSessionBridge() {
         await update({ accessToken });
       },
       onUnauthorized: () => {
-        void signOut({ callbackUrl: "/login" });
+        if (!signingOut.current) {
+          signingOut.current = true;
+          void signOut({ callbackUrl: "/login" });
+        }
       },
     });
   }, [session?.accessToken, session?.refreshToken, update]);
 
-  return null;
+  return status === "loading" ? null : children;
 }
 
 function QueryProvider({ children }: { children: React.ReactNode }) {
@@ -49,8 +54,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <QueryProvider>
-        <ApiSessionBridge />
-        <ErrorFeedbackProvider>{children}</ErrorFeedbackProvider>
+        <ApiSessionBridge>
+          <ErrorFeedbackProvider>{children}</ErrorFeedbackProvider>
+        </ApiSessionBridge>
         <Toaster
           richColors
           position="top-right"

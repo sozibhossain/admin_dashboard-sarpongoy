@@ -25,6 +25,7 @@ import {
   type ExportColumn,
 } from "@/components/management/export-records-dialog";
 import { SectionHeader } from "@/components/management/section-header";
+import { CreatedDate } from "@/components/management/created-date";
 import { TableSkeleton } from "@/components/management/table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -368,7 +369,7 @@ export default function SchoolManagementPage() {
           />
 
           {schoolsQuery.isLoading ? (
-            <TableSkeleton columns={8} />
+            <TableSkeleton columns={9} />
           ) : schoolsQuery.isError ? (
             <div className="rounded-lg border border-[#ffd3d3] bg-[#fff6f6] p-4 text-[#d73636]">
               {getApiErrorMessage(schoolsQuery.error, "Failed to load schools")}
@@ -399,6 +400,7 @@ export default function SchoolManagementPage() {
                     <TableHead>Total Teacher</TableHead>
                     <TableHead>Grade</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created Date</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -468,6 +470,9 @@ export default function SchoolManagementPage() {
                             {item.status === "active" ? "Active" : "Locked"}
                           </Badge>
                         </button>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <CreatedDate value={item.createdAt} />
                       </TableCell>
                       <TableCell>
                         <button
